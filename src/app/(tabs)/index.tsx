@@ -11,7 +11,7 @@ import SearchBox from "../../../components/SearchBox";
 import WeatherCard from "../../../components/WeatherCard";
 import { useDebounce } from "../../hooks/use-debounce";
 import { cariKota } from "../../services/geocodingService";
-import { HasilGeocoding } from "../../types/geocoding";
+import { HasilGeocoding } from "../../../types/geocoding";
 
 export default function HalamanUtama() {
   const [teksCari, setTeksCari] = useState("");
@@ -19,7 +19,7 @@ export default function HalamanUtama() {
   const [sedangMemuat, setSedangMemuat] = useState(false);
   const [pesanError, setPesanError] = useState<string | null>(null);
 
-  const teksTertunda = useDebounce(teksCari, 500);
+  const teksTertunda = useDebounce(teksCari, 800);
 
   useEffect(() => {
     if (teksTertunda.trim().length === 0) {
@@ -61,7 +61,9 @@ export default function HalamanUtama() {
 
       {pesanError && (
         <View>
-          <Text>{pesanError}</Text>
+          <Text accessibilityLabel="Pesan kesalahan saat mengambil data">
+            {pesanError}
+          </Text>
 
           <Button
             title="Coba Lagi"
@@ -74,8 +76,14 @@ export default function HalamanUtama() {
         !pesanError &&
         teksTertunda.length > 0 &&
         hasil.length === 0 && (
-          <Text>Kota tidak ditemukan</Text>
+          <Text accessibilityLabel="Pesan bahwa kota tidak ditemukan">
+            Kota tidak ditemukan
+          </Text>
         )}
+
+      {hasil.length > 0 && (
+        <Text>Ditemukan {hasil.length} kota</Text>
+      )}
 
       {hasil.map((kota) => (
         <WeatherCard
