@@ -23,7 +23,7 @@ import { HasilGeocoding } from "../../../types/geocoding";
 import {
   DataCuacaLengkap,
   DataKualitasUdara,
-} from "../../types/weather";
+} from "../../../types/weather";
 
 export default function HalamanUtama() {
   const [teksCari, setTeksCari] = useState("");
@@ -74,12 +74,16 @@ export default function HalamanUtama() {
         ambilKualitasUdara(kota.latitude, kota.longitude),
       ]);
 
-      if (idSaatIni !== requestIdRef.current) return;
+      if (idSaatIni !== requestIdRef.current) {
+        return;
+      }
 
       setCuaca(dataCuaca);
       setKualitasUdara(dataAQI);
     } catch (err) {
-      if (idSaatIni !== requestIdRef.current) return;
+      if (idSaatIni !== requestIdRef.current) {
+        return;
+      }
 
       setPesanError(
         "Gagal memuat data cuaca. Periksa koneksi internet Anda."
@@ -125,10 +129,8 @@ export default function HalamanUtama() {
         </View>
       )}
 
-      {cuaca &&
-        kualitasUdara &&
-        kotaTerpilih &&
-        !sedangMemuat && (
+      {cuaca && kualitasUdara && kotaTerpilih && !sedangMemuat && (
+        <>
           <WeatherCard
             kota={kotaTerpilih.name}
             suhu={cuaca.saatIni.suhu}
@@ -137,7 +139,18 @@ export default function HalamanUtama() {
             )}
             indeksAQI={kualitasUdara.indeksAQI}
           />
-        )}
+
+          <Text
+            style={{
+              fontSize: 14,
+              marginTop: 8,
+            }}
+          >
+            Maks: {cuaca.harian.suhuMaksimal[0]}°C | Min:{" "}
+            {cuaca.harian.suhuMinimal[0]}°C
+          </Text>
+        </>
+      )}
 
       {cuaca && (
         <Text
@@ -148,6 +161,19 @@ export default function HalamanUtama() {
         >
           Kondisi: {labelKodeCuaca(cuaca.saatIni.kodeCuaca)} •
           Angin {cuaca.saatIni.kecepatanAngin} km/j
+        </Text>
+      )}
+
+      {kualitasUdara && (
+        <Text
+          style={{
+            fontSize: 14,
+            color: "#555",
+            marginTop: 4,
+          }}
+        >
+          PM2.5: {kualitasUdara.pm25} µg/m³ | PM10:{" "}
+          {kualitasUdara.pm10} µg/m³
         </Text>
       )}
 
