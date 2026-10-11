@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 import SearchBox from "../../../components/SearchBox";
 import WeatherCard from "../../../components/WeatherCard";
@@ -24,6 +25,9 @@ import {
   DataCuacaLengkap,
   DataKualitasUdara,
 } from "../../../types/weather";
+
+// Import service lokasi dari Tahap 2
+import { mintaIzinLokasi, ambilKoordinatSaatIni } from "../../services/locationService";
 
 export default function HalamanUtama() {
   const [teksCari, setTeksCari] = useState("");
@@ -44,6 +48,9 @@ export default function HalamanUtama() {
 
   const [pesanError, setPesanError] =
     useState<string | null>(null);
+
+  // State untuk menyimpan pesan info perizinan/layanan lokasi (Tahap 3)
+  const [pesanLokasi, setPesanLokasi] = useState<string | null>(null);
 
   const teksTertunda = useDebounce(teksCari, 500);
 
@@ -95,6 +102,29 @@ export default function HalamanUtama() {
     }
   }
 
+  // Fungsi penanganan lokasi (Tahap 3)
+  async function gunakanLokasiSaatIni() {
+    const status = await mintaIzinLokasi();
+    if (status === "denied") {
+      setPesanLokasi("Izin lokasi ditolak. Silakan cari kota secara manual di atas.");
+      return;
+    }
+    if (status === "unavailable") {
+      setPesanLokasi("Layanan lokasi tidak aktif di perangkat ini. Silakan cari kota secara manual.");
+      return;
+    }
+
+    setPesanLokasi(null);
+    const koordinat = await ambilKoordinatSaatIni();
+    pilihKota({
+      id: -1,
+      name: "Lokasi Saat Ini",
+      latitude: koordinat.latitude,
+      longitude: koordinat.longitude,
+      country: "",
+    });
+  }
+
   return (
     <SafeAreaView
       style={{
@@ -104,6 +134,10 @@ export default function HalamanUtama() {
       }}
     >
       <SearchBox onCari={setTeksCari} />
+
+      {/* Tombol Gunakan Lokasi Saat Ini & Pesan Error/Warning Lokasi (Tahap 3) */}
+      <Button title="Gunakan Lokasi Saat Ini" onPress={gunakanLokasiSaatIni} />
+      {pesanLokasi && <Text>{pesanLokasi}</Text>}
 
       {hasilPencarian.map((kota) => (
         <TouchableOpacity
@@ -138,6 +172,22 @@ export default function HalamanUtama() {
               kualitasUdara.indeksAQI
             )}
             indeksAQI={kualitasUdara.indeksAQI}
+          />
+
+          {/* Tombol Tambahkan ke Favorit (Tahap 6) */}
+          <Button
+            title="Tambahkan ke Favorit"
+            onPress={() =>
+              router.push({
+                pathname: "/tambah-favorit",
+                params: {
+                  id: String(kotaTerpilih.id),
+                  nama: kotaTerpilih.name,
+                  lat: String(kotaTerpilih.latitude),
+                  lon: String(kotaTerpilih.longitude),
+                },
+              })
+            }
           />
 
           <Text
