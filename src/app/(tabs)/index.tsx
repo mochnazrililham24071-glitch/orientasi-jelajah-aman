@@ -40,13 +40,11 @@ export default function HalamanUtama() {
   const [pesanError, setPesanError] = useState<string | null>(null);
   const [pesanLokasi, setPesanLokasi] = useState<string | null>(null);
   
-  // State untuk melacak status favorit kota
   const [sudahFavorit, setSudahFavorit] = useState(false);
 
   const teksTertunda = useDebounce(teksCari, 500);
   const requestIdRef = useRef(0);
 
-  // Fungsi untuk memeriksa apakah kotaTerpilih sudah ada di AsyncStorage
   const cekStatusFavorit = useCallback(async (kota: HasilGeocoding | null) => {
     if (!kota) {
       setSudahFavorit(false);
@@ -59,7 +57,6 @@ export default function HalamanUtama() {
     setSudahFavorit(ada);
   }, []);
 
-  // Periksa status favorit setiap kali kotaTerpilih berubah atau tab beranda difokuskan kembali
   useFocusEffect(
     useCallback(() => {
       cekStatusFavorit(kotaTerpilih);
@@ -130,12 +127,18 @@ export default function HalamanUtama() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, padding: 16, gap: 16 }}>
+    <SafeAreaView style={{ flex: 1, padding: 16 }}>
       <ScrollView>
         <SearchBox onCari={setTeksCari} />
 
-        <Button title="Gunakan Lokasi Saat Ini" onPress={gunakanLokasiSaatIni} />
-        {pesanLokasi && <Text>{pesanLokasi}</Text>}
+        {/* Jarak spasi diberikan agar tombol tidak mepet dengan SearchBox */}
+        <View style={{ marginTop: 12, marginBottom: 8 }}>
+          <Button title="Gunakan Lokasi Saat Ini" onPress={gunakanLokasiSaatIni} />
+        </View>
+
+        {pesanLokasi && (
+          <Text style={{ marginBottom: 8, color: "#d97706" }}>{pesanLokasi}</Text>
+        )}
 
         {hasilPencarian.map((kota) => (
           <TouchableOpacity key={kota.id} onPress={() => pilihKota(kota)}>
@@ -164,7 +167,6 @@ export default function HalamanUtama() {
               indeksAQI={kualitasUdara.indeksAQI}
             />
 
-            {/* Tombol Tambahkan ke Favorit (dinonaktifkan jika sudah favorit) */}
             <Button
               title={sudahFavorit ? "Sudah di Favorit" : "Tambahkan ke Favorit"}
               disabled={sudahFavorit}
