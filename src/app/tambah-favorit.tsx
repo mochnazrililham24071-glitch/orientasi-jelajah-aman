@@ -1,28 +1,29 @@
 import { View, Text, Button } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { tambahFavorit } from "../services/favoritStorage";
 
 export default function ModalTambahFavorit() {
+  const { id, nama, lat, lon } = useLocalSearchParams<{
+    id: string;
+    nama: string;
+    lat: string;
+    lon: string;
+  }>();
+
+  async function simpan() {
+    await tambahFavorit({
+      id: id ? Number(id) : Date.now(),
+      nama: nama || "Lokasi Saat Ini",
+      latitude: Number(lat),
+      longitude: Number(lon),
+    });
+    router.back();
+  }
+
   return (
-    <View
-      style={{
-        flex: 1,
-        padding: 16,
-        gap: 16,
-      }}
-    >
-      <Text>
-        Tambahkan kota ini ke daftar favorit?
-      </Text>
-
-      <Button
-        title="Simpan"
-        onPress={() => router.back()}
-      />
-
-      <Button
-        title="Batal"
-        onPress={() => router.back()}
-      />
+    <View style={{ padding: 16, gap: 16 }}>
+      <Text>Tambahkan {nama} ke daftar favorit?</Text>
+      <Button title="Simpan" onPress={simpan} />
     </View>
   );
 }
