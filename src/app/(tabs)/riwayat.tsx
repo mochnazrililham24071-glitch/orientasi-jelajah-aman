@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, Button } from "react-native";
+import { View, Text, Button, Alert } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ambilSemuaFavorit, hapusFavorit } from "../../services/favoritStorage";
@@ -14,16 +14,41 @@ export default function TabRiwayat() {
     }, [])
   );
 
-  async function eksekusiHapus(id: number) {
-    await hapusFavorit(id);
-    setDaftarFavorit((prev) => prev.filter((k) => k.id !== id));
-  }
+  // Fungsi Konfirmasi Murni React Native Alert
+  const mintaKonfirmasiHapus = (id: number, nama: string) => {
+    Alert.alert(
+      "Konfirmasi Hapus",
+      `Yakin hapus ${nama}?`,
+      [
+        {
+          text: "Batal",
+          style: "cancel",
+        },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: async () => {
+            await hapusFavorit(id);
+            setDaftarFavorit((prev) => prev.filter((k) => k.id !== id));
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: "bold" }}>Kota Favorit</Text>
 
-      {daftarFavorit.length === 0 && <Text>Belum ada kota favorit</Text>}
+      {/* Informasi Jumlah Kota Tersimpan */}
+      <Text style={{ fontSize: 14, color: "#666" }}>
+        Tersimpan {daftarFavorit.length} kota
+      </Text>
+
+      {daftarFavorit.length === 0 && (
+        <Text style={{ marginTop: 8 }}>Belum ada kota favorit</Text>
+      )}
 
       {daftarFavorit.map((kota) => (
         <View
@@ -32,10 +57,17 @@ export default function TabRiwayat() {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#eee",
           }}
         >
-          <Text>{kota.nama}</Text>
-          <Button title="Hapus" onPress={() => eksekusiHapus(kota.id)} />
+          <Text style={{ fontSize: 16 }}>{kota.nama}</Text>
+          <Button
+            title="Hapus"
+            color="red"
+            onPress={() => mintaKonfirmasiHapus(kota.id, kota.nama)}
+          />
         </View>
       ))}
     </SafeAreaView>
