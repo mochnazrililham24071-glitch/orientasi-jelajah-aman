@@ -1,45 +1,47 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
   ActivityIndicator,
   Button,
-  TouchableOpacity,
   ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useFocusEffect } from "expo-router";
 
-import SearchBox from "../../../components/SearchBox";
-import WeatherCard from "../../../components/WeatherCard";
 import AtribusiCuaca from "../../components/AtribusiCuaca";
+import SearchBox from "../../components/SearchBox";
+import WeatherCard from "../../components/WeatherCard";
 
+import { labelKodeCuaca } from "../../constants/weatherCodes";
 import { useDebounce } from "../../hooks/use-debounce";
-import { cariKota } from "../../services/geocodingService";
-import { ambilCuaca } from "../../services/weatherService";
 import { ambilKualitasUdara } from "../../services/airQualityService";
+import { cariKota } from "../../services/geocodingService";
 import { konversiTingkatAQI } from "../../services/weatherAdapter";
-import { labelKodeCuaca } from "../../../constants/weatherCodes";
+import { ambilCuaca } from "../../services/weatherService";
 
 import { HasilGeocoding } from "../../../types/geocoding";
-import {
-  DataCuacaLengkap,
-  DataKualitasUdara,
-} from "../../../types/weather";
+import { DataCuacaLengkap, DataKualitasUdara } from "../../../types/weather";
 
-import { mintaIzinLokasi, ambilKoordinatSaatIni } from "../../services/locationService";
 import { ambilSemuaFavorit } from "../../services/favoritStorage";
+import {
+  ambilKoordinatSaatIni,
+  mintaIzinLokasi,
+} from "../../services/locationService";
 
 export default function HalamanUtama() {
   const [teksCari, setTeksCari] = useState("");
   const [hasilPencarian, setHasilPencarian] = useState<HasilGeocoding[]>([]);
   const [kotaTerpilih, setKotaTerpilih] = useState<HasilGeocoding | null>(null);
   const [cuaca, setCuaca] = useState<DataCuacaLengkap | null>(null);
-  const [kualitasUdara, setKualitasUdara] = useState<DataKualitasUdara | null>(null);
+  const [kualitasUdara, setKualitasUdara] = useState<DataKualitasUdara | null>(
+    null,
+  );
   const [sedangMemuat, setSedangMemuat] = useState(false);
   const [pesanError, setPesanError] = useState<string | null>(null);
   const [pesanLokasi, setPesanLokasi] = useState<string | null>(null);
-  
+
   const [sudahFavorit, setSudahFavorit] = useState(false);
 
   const teksTertunda = useDebounce(teksCari, 500);
@@ -51,16 +53,14 @@ export default function HalamanUtama() {
       return;
     }
     const daftar = await ambilSemuaFavorit();
-    const ada = daftar.some(
-      (k) => k.id === kota.id || k.nama === kota.name
-    );
+    const ada = daftar.some((k) => k.id === kota.id || k.nama === kota.name);
     setSudahFavorit(ada);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       cekStatusFavorit(kotaTerpilih);
-    }, [kotaTerpilih, cekStatusFavorit])
+    }, [kotaTerpilih, cekStatusFavorit]),
   );
 
   useEffect(() => {
@@ -107,11 +107,15 @@ export default function HalamanUtama() {
   async function gunakanLokasiSaatIni() {
     const status = await mintaIzinLokasi();
     if (status === "denied") {
-      setPesanLokasi("Izin lokasi ditolak. Silakan cari kota secara manual di atas.");
+      setPesanLokasi(
+        "Izin lokasi ditolak. Silakan cari kota secara manual di atas.",
+      );
       return;
     }
     if (status === "unavailable") {
-      setPesanLokasi("Layanan lokasi tidak aktif di perangkat ini. Silakan cari kota secara manual.");
+      setPesanLokasi(
+        "Layanan lokasi tidak aktif di perangkat ini. Silakan cari kota secara manual.",
+      );
       return;
     }
 
@@ -133,11 +137,16 @@ export default function HalamanUtama() {
 
         {/* Jarak spasi diberikan agar tombol tidak mepet dengan SearchBox */}
         <View style={{ marginTop: 12, marginBottom: 8 }}>
-          <Button title="Gunakan Lokasi Saat Ini" onPress={gunakanLokasiSaatIni} />
+          <Button
+            title="Gunakan Lokasi Saat Ini"
+            onPress={gunakanLokasiSaatIni}
+          />
         </View>
 
         {pesanLokasi && (
-          <Text style={{ marginBottom: 8, color: "#d97706" }}>{pesanLokasi}</Text>
+          <Text style={{ marginBottom: 8, color: "#d97706" }}>
+            {pesanLokasi}
+          </Text>
         )}
 
         {hasilPencarian.map((kota) => (
@@ -194,7 +203,8 @@ export default function HalamanUtama() {
             </Text>
 
             <Text style={{ fontSize: 14, color: "#555" }}>
-              PM2.5: {kualitasUdara.pm25} µg/m³ | PM10: {kualitasUdara.pm10} µg/m³
+              PM2.5: {kualitasUdara.pm25} µg/m³ | PM10: {kualitasUdara.pm10}{" "}
+              µg/m³
             </Text>
           </View>
         )}
