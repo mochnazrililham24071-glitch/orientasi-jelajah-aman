@@ -1,5 +1,5 @@
-import { View, Text } from "react-native";
-import { typeScale, spacing } from "../../../constants/styles";
+import { Text, View } from "react-native";
+import { spacing, typeScale } from "../../constants/styles";
 
 export default function Tentang() {
   return (
@@ -25,9 +25,7 @@ export default function Tentang() {
         Nama Aplikasi: Jelajah Aman
       </Text>
 
-      <Text style={{ fontSize: typeScale.isi }}>
-        Versi: 1.0.0
-      </Text>
+      <Text style={{ fontSize: typeScale.isi }}>Versi: 1.0.0</Text>
 
       <Text style={{ fontSize: typeScale.isi }}>
         Nama Pembuat: Moch. Nazril Ilham
