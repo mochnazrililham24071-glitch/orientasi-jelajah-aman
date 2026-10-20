@@ -1,201 +1,114 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import {
+  View,
+  Text,
+  ScrollView,
   ActivityIndicator,
   Button,
-  ScrollView,
-  Text,
   TouchableOpacity,
-  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
-import AtribusiCuaca from "../../components/AtribusiCuaca";
 import SearchBox from "../../components/SearchBox";
 import WeatherCard from "../../components/WeatherCard";
-
-import { labelKodeCuaca } from "../../constants/weatherCodes";
+import AtribusiCuaca from "../../components/AtribusiCuaca";
+import StatusData from "../../components/StatusData";
 import { useDebounce } from "../../hooks/use-debounce";
-import { ambilKualitasUdara } from "../../services/airQualityService";
-import { ambilSemuaFavorit } from "../../services/favoritStorage";
 import { cariKota } from "../../services/geocodingService";
 import {
-  ambilKoordinatSaatIni,
+  ambilCuacaOfflineFirst,
+  BATAS_CACHE_MS,
+} from "../../services/cuacaRepository";
+import {
+  bersihkanCacheLama,
+  daftarKotaTersimpan,
+} from "../../services/cacheRepository";
+import {
   mintaIzinLokasi,
+  ambilKoordinatSaatIni,
 } from "../../services/locationService";
 import { konversiTingkatAQI } from "../../services/weatherAdapter";
-import { ambilCuaca } from "../../services/weatherService";
-
+import { labelKodeCuaca } from "../../constants/weatherCodes";
 import { HasilGeocoding } from "../../../types/geocoding";
-import { DataCuacaLengkap, DataKualitasUdara } from "../../../types/weather";
-
-const KUNCI_CACHE_CUACA = "@orientasi_jelajah_aman_cache_cuaca";
-
-type CacheCuaca = {
-  kota: HasilGeocoding;
-  cuaca: DataCuacaLengkap;
-  kualitasUdara: DataKualitasUdara;
-  diperbaruiPada: string;
-};
+import {
+  HasilCuacaOffline,
+  RingkasanKotaTersimpan,
+} from "../../../types/cache";
 
 export default function HalamanUtama() {
   const [teksCari, setTeksCari] = useState("");
-  const [hasilPencarian, setHasilPencarian] = useState<HasilGeocoding[]>([]);
-  const [kotaTerpilih, setKotaTerpilih] = useState<HasilGeocoding | null>(null);
-  const [cuaca, setCuaca] = useState<DataCuacaLengkap | null>(null);
-  const [kualitasUdara, setKualitasUdara] = useState<DataKualitasUdara | null>(
-    null,
-  );
+  const [hasilPencarian, setHasilPencarian] =
+    useState<HasilGeocoding[]>([]);
+  const [kotaTerpilih, setKotaTerpilih] =
+    useState<HasilGeocoding | null>(null);
+  const [hasil, setHasil] =
+    useState<HasilCuacaOffline | null>(null);
+  const [kotaTersimpan, setKotaTersimpan] =
+    useState<RingkasanKotaTersimpan[]>([]);
   const [sedangMemuat, setSedangMemuat] = useState(false);
-  const [pesanError, setPesanError] = useState<string | null>(null);
-  const [pesanLokasi, setPesanLokasi] = useState<string | null>(null);
-  const [sudahFavorit, setSudahFavorit] = useState(false);
-  const [waktuPembaruan, setWaktuPembaruan] = useState<string | null>(null);
-  const [menggunakanCache, setMenggunakanCache] = useState(false);
+  const [pesanError, setPesanError] =
+    useState<string | null>(null);
+  const [pesanLokasi, setPesanLokasi] =
+    useState<string | null>(null);
 
   const teksTertunda = useDebounce(teksCari, 500);
   const requestIdRef = useRef(0);
 
-  // Memulihkan data cuaca terakhir saat aplikasi dibuka.
+  async function muatKotaTersimpan() {
+    setKotaTersimpan(await daftarKotaTersimpan());
+  }
+
   useEffect(() => {
-    async function pulihkanCache() {
-      try {
-        const tersimpan = await AsyncStorage.getItem(KUNCI_CACHE_CUACA);
-
-        if (tersimpan) {
-          const cache: CacheCuaca = JSON.parse(tersimpan);
-
-          setKotaTerpilih(cache.kota);
-          setCuaca(cache.cuaca);
-          setKualitasUdara(cache.kualitasUdara);
-          setWaktuPembaruan(cache.diperbaruiPada);
-          setMenggunakanCache(true);
-        }
-      } catch {
-        setPesanError("Data cuaca tersimpan tidak dapat dibaca.");
-      }
-    }
-
-    pulihkanCache();
+    bersihkanCacheLama(BATAS_CACHE_MS)
+      .then(muatKotaTersimpan)
+      .catch(() => {});
   }, []);
 
-  const cekStatusFavorit = useCallback(async (kota: HasilGeocoding | null) => {
-    if (!kota) {
-      setSudahFavorit(false);
-      return;
-    }
-
-    try {
-      const daftar = await ambilSemuaFavorit();
-      const ada = daftar.some((k) => k.id === kota.id || k.nama === kota.name);
-      setSudahFavorit(ada);
-    } catch {
-      setSudahFavorit(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      cekStatusFavorit(kotaTerpilih);
-    }, [kotaTerpilih, cekStatusFavorit]),
-  );
-
-  // Pencarian kota menggunakan API saat tersedia.
   useEffect(() => {
     if (teksTertunda.trim().length === 0) {
       setHasilPencarian([]);
       return;
     }
 
-    let masihAktif = true;
-
     cariKota(teksTertunda)
-      .then((hasil) => {
-        if (masihAktif) setHasilPencarian(hasil);
-      })
-      .catch(() => {
-        if (masihAktif) setHasilPencarian([]);
-      });
-
-    return () => {
-      masihAktif = false;
-    };
+      .then(setHasilPencarian)
+      .catch(() => setHasilPencarian([]));
   }, [teksTertunda]);
 
-  async function pilihKota(kota: HasilGeocoding) {
+  async function pilihKota(
+    kota: HasilGeocoding,
+    paksaPerbarui = false
+  ) {
     setKotaTerpilih(kota);
-    void cekStatusFavorit(kota);
-
     const idSaatIni = ++requestIdRef.current;
 
     setSedangMemuat(true);
     setPesanError(null);
-    setMenggunakanCache(false);
 
     try {
-      const [dataCuaca, dataAQI] = await Promise.all([
-        ambilCuaca(kota.latitude, kota.longitude),
-        ambilKualitasUdara(kota.latitude, kota.longitude),
-      ]);
+      const data = await ambilCuacaOfflineFirst(
+        {
+          id: kota.id,
+          nama: kota.name,
+          latitude: kota.latitude,
+          longitude: kota.longitude,
+        },
+        { paksaPerbarui }
+      );
 
       if (idSaatIni !== requestIdRef.current) return;
 
-      const cacheBaru: CacheCuaca = {
-        kota,
-        cuaca: dataCuaca,
-        kualitasUdara: dataAQI,
-        diperbaruiPada: new Date().toISOString(),
-      };
-
-      // Simpan hasil terbaru agar bisa dibuka saat offline.
-      await AsyncStorage.setItem(KUNCI_CACHE_CUACA, JSON.stringify(cacheBaru));
-
-      if (idSaatIni !== requestIdRef.current) return;
-
-      setCuaca(dataCuaca);
-      setKualitasUdara(dataAQI);
-      setWaktuPembaruan(cacheBaru.diperbaruiPada);
-      setMenggunakanCache(false);
+      setHasil(data);
+      void muatKotaTersimpan();
     } catch {
       if (idSaatIni !== requestIdRef.current) return;
 
-      // Jika API gagal, gunakan cache untuk kota yang sama.
-      try {
-        const tersimpan = await AsyncStorage.getItem(KUNCI_CACHE_CUACA);
-
-        if (idSaatIni !== requestIdRef.current) return;
-
-        if (tersimpan) {
-          const cache: CacheCuaca = JSON.parse(tersimpan);
-
-          const kotaSama =
-            cache.kota.name.toLowerCase() === kota.name.toLowerCase() &&
-            Math.abs(cache.kota.latitude - kota.latitude) < 0.01 &&
-            Math.abs(cache.kota.longitude - kota.longitude) < 0.01;
-
-          if (kotaSama) {
-            setKotaTerpilih(cache.kota);
-            setCuaca(cache.cuaca);
-            setKualitasUdara(cache.kualitasUdara);
-            setWaktuPembaruan(cache.diperbaruiPada);
-            setMenggunakanCache(true);
-            setPesanError(
-              "Offline: menampilkan data tersimpan, bukan data terkini.",
-            );
-          } else {
-            setPesanError(
-              "Data kota ini belum tersimpan. Hubungkan internet untuk mengambil data.",
-            );
-          }
-        } else {
-          setPesanError(
-            "Belum ada data offline. Hubungkan internet untuk mengambil data cuaca.",
-          );
-        }
-      } catch {
-        setPesanError("Gagal membaca data offline.");
-      }
+      setHasil(null);
+      setPesanError(
+        "Belum ada data tersimpan dan tidak ada koneksi internet. Sambungkan internet lalu coba lagi."
+      );
     } finally {
       if (idSaatIni === requestIdRef.current) {
         setSedangMemuat(false);
@@ -204,101 +117,136 @@ export default function HalamanUtama() {
   }
 
   async function gunakanLokasiSaatIni() {
-    try {
-      const status = await mintaIzinLokasi();
+    const status = await mintaIzinLokasi();
 
-      if (status === "denied") {
-        setPesanLokasi("Izin lokasi ditolak. Silakan cari kota secara manual.");
-        return;
-      }
-
-      if (status === "unavailable") {
-        setPesanLokasi(
-          "Layanan lokasi tidak aktif. Silakan cari kota secara manual.",
-        );
-        return;
-      }
-
-      setPesanLokasi(null);
-      const koordinat = await ambilKoordinatSaatIni();
-
-      await pilihKota({
-        id: -1,
-        name: "Lokasi Saat Ini",
-        latitude: koordinat.latitude,
-        longitude: koordinat.longitude,
-        country: "",
-      });
-    } catch {
+    if (status === "denied") {
       setPesanLokasi(
-        "Lokasi gagal diperoleh. Silakan cari kota secara manual.",
+        "Izin lokasi ditolak. Silakan cari kota secara manual di atas."
       );
+      return;
     }
+
+    if (status === "unavailable") {
+      setPesanLokasi(
+        "Layanan lokasi tidak aktif di perangkat ini. Silakan cari kota secara manual."
+      );
+      return;
+    }
+
+    setPesanLokasi(null);
+
+    const koordinat = await ambilKoordinatSaatIni();
+
+    pilihKota({
+      id: -1,
+      name: "Lokasi Saat Ini",
+      latitude: koordinat.latitude,
+      longitude: koordinat.longitude,
+      country: "",
+    });
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, padding: 16 }}>
-      <ScrollView>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, gap: 16 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <SearchBox onCari={setTeksCari} />
 
-        <View style={{ marginTop: 12, marginBottom: 8 }}>
-          <Button
-            title="Gunakan Lokasi Saat Ini"
-            onPress={gunakanLokasiSaatIni}
-          />
-        </View>
+        <Button
+          title="Gunakan Lokasi Saat Ini"
+          onPress={gunakanLokasiSaatIni}
+        />
 
         {pesanLokasi && (
-          <Text style={{ marginBottom: 8, color: "#d97706" }}>
+          <Text accessibilityLabel={pesanLokasi}>
             {pesanLokasi}
           </Text>
         )}
 
         {hasilPencarian.map((kota) => (
-          <TouchableOpacity key={kota.id} onPress={() => pilihKota(kota)}>
-            <Text style={{ paddingVertical: 8 }}>{kota.name}</Text>
+          <TouchableOpacity
+            key={kota.id}
+            onPress={() => pilihKota(kota)}
+          >
+            <Text>{kota.name}</Text>
           </TouchableOpacity>
         ))}
 
-        {sedangMemuat && <ActivityIndicator style={{ marginTop: 16 }} />}
+        {kotaTersimpan.length > 0 && (
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontWeight: "bold" }}>
+              Tersimpan di perangkat (bisa dibuka offline)
+            </Text>
+
+            {kotaTersimpan.map((k) => (
+              <TouchableOpacity
+                key={k.kunci}
+                onPress={() =>
+                  pilihKota({
+                    id: k.id,
+                    name: k.nama,
+                    latitude: k.latitude,
+                    longitude: k.longitude,
+                    country: "",
+                  })
+                }
+              >
+                <Text>{k.nama}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {sedangMemuat && <ActivityIndicator />}
 
         {pesanError && (
-          <View style={{ marginTop: 16 }}>
-            <Text>{pesanError}</Text>
+          <View>
+            <Text accessibilityLabel={pesanError}>
+              {pesanError}
+            </Text>
+
             <Button
               title="Coba Lagi"
-              onPress={() => {
-                if (kotaTerpilih) void pilihKota(kotaTerpilih);
-              }}
+              onPress={() =>
+                kotaTerpilih && pilihKota(kotaTerpilih, true)
+              }
             />
           </View>
         )}
 
-        {cuaca && kualitasUdara && kotaTerpilih && !sedangMemuat && (
-          <View style={{ gap: 12, marginTop: 16 }}>
-            {menggunakanCache && (
-              <Text style={{ color: "#b45309" }}>
-                Mode offline — data terakhir tersimpan
-              </Text>
-            )}
-
-            {waktuPembaruan && (
-              <Text style={{ fontSize: 12, color: "#666" }}>
-                Data diperbarui:{" "}
-                {new Date(waktuPembaruan).toLocaleString("id-ID")}
-              </Text>
-            )}
+        {hasil && kotaTerpilih && !sedangMemuat && (
+          <>
+            <StatusData
+              sumber={hasil.sumber}
+              disimpanPada={hasil.disimpanPada}
+            />
 
             <WeatherCard
               kota={kotaTerpilih.name}
-              suhu={cuaca.saatIni.suhu}
-              tingkatAQI={konversiTingkatAQI(kualitasUdara.indeksAQI)}
-              indeksAQI={kualitasUdara.indeksAQI}
+              suhu={hasil.cuaca.saatIni.suhu}
+              tingkatAQI={konversiTingkatAQI(
+                hasil.kualitasUdara.indeksAQI
+              )}
+            />
+
+            <Text style={{ fontSize: 12, color: "#888888" }}>
+              Kondisi:{" "}
+              {labelKodeCuaca(hasil.cuaca.saatIni.kodeCuaca)}
+              {" • "}Angin{" "}
+              {hasil.cuaca.saatIni.kecepatanAngin} km/j
+            </Text>
+
+            <Button
+              title="Perbarui Sekarang"
+              onPress={() =>
+                kotaTerpilih && pilihKota(kotaTerpilih, true)
+              }
             />
 
             <Button
-              title={sudahFavorit ? "Sudah di Favorit" : "Tambahkan ke Favorit"}
-              disabled={sudahFavorit}
+              title="Tambahkan ke Favorit"
               onPress={() =>
                 router.push({
                   pathname: "/tambah-favorit",
@@ -311,27 +259,10 @@ export default function HalamanUtama() {
                 })
               }
             />
-
-            <Text style={{ fontSize: 14 }}>
-              Maks: {cuaca.harian.suhuMaksimal[0]}°C | Min:{" "}
-              {cuaca.harian.suhuMinimal[0]}°C
-            </Text>
-
-            <Text style={{ fontSize: 12, color: "#888" }}>
-              Kondisi: {labelKodeCuaca(cuaca.saatIni.kodeCuaca)} • Angin{" "}
-              {cuaca.saatIni.kecepatanAngin} km/j
-            </Text>
-
-            <Text style={{ fontSize: 14, color: "#555" }}>
-              PM2.5: {kualitasUdara.pm25} µg/m³ | PM10: {kualitasUdara.pm10}{" "}
-              µg/m³
-            </Text>
-          </View>
+          </>
         )}
 
-        <View style={{ marginTop: 16 }}>
-          <AtribusiCuaca />
-        </View>
+        <AtribusiCuaca />
       </ScrollView>
     </SafeAreaView>
   );

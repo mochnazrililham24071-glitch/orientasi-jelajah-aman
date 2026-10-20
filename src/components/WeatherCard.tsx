@@ -1,5 +1,5 @@
 import { View, Text } from "react-native";
-import { WeatherCardProps, TingkatAQI } from "../types/cuaca";
+import { WeatherCardProps, TingkatAQI } from "../../types/cuaca";
 import { typeScale, spacing } from "../constants/styles";
 
 const warnaPerTingkat: Record<TingkatAQI, string> = {
