@@ -1,21 +1,25 @@
 # Jelajah Aman
 
-Aplikasi cuaca dan kualitas udara berbasis Expo (React Native + TypeScript) yang bisa dipakai juga saat offline berkat cache SQLite.
+Aplikasi cuaca dan kualitas udara berbasis **Expo (React Native + TypeScript)** yang dapat digunakan secara offline melalui penyimpanan cache lokal menggunakan SQLite.
 
-## Status Data: cache-segar, cache-basi, dan first-run offline
+## Status Data: Cache-Segar, Cache-Basi, dan First-Run Offline
 
-**Cache-segar** berarti data tersimpan di perangkat berumur kurang dari 30 menit (TTL), sehingga aplikasi langsung memakainya tanpa memanggil internet. **Cache-basi** berarti umur data sudah 30 menit atau lebih dan internet gagal dijangkau, sehingga aplikasi tetap menampilkan data lama itu dengan label oranye "Mode offline - data tersimpan mungkin sudah usang". **First-run offline** berarti belum ada cache sama sekali dan internet juga tidak ada, sehingga tidak ada data yang bisa ditampilkan dan pengguna hanya melihat pesan error beserta tombol "Coba Lagi". Label status ini penting karena pengguna berhak tahu apakah angka suhu dan kualitas udara yang dilihat itu baru dari internet atau salinan lama, supaya tidak salah mengambil keputusan (misalnya soal udara yang tidak sehat) berdasarkan data yang sudah usang.
+- **Cache-segar:** Data yang tersimpan di perangkat berumur kurang dari 30 menit (_Time to Live_ / TTL), sehingga aplikasi dapat langsung menggunakannya tanpa mengambil data baru dari internet.
+- **Cache-basi:** Data yang tersimpan berumur 30 menit atau lebih dan koneksi internet gagal dijangkau. Aplikasi tetap menampilkan data lama dengan label oranye: **"Mode offline - data tersimpan mungkin sudah usang"**.
+- **First-run offline:** Belum ada cache yang tersimpan dan perangkat tidak memiliki koneksi internet. Aplikasi tidak dapat menampilkan data cuaca dan kualitas udara, sehingga pengguna hanya melihat pesan kesalahan beserta tombol **Coba Lagi**.
+
+Label status ini membantu mengetahui apakah informasi suhu dan kualitas udara yang ditampilkan merupakan data terbaru atau salinan lama yang tersimpan di perangkat. Hal ini penting agar pengguna dapat mempertimbangkan kebaruan data sebelum mengambil keputusan, terutama ketika kualitas udara berada pada kondisi tidak sehat.
 
 ## Fitur Penyempurnaan UTS
 
-1. **Ikon tab bar dan label navigasi** - tiap tab punya ikon Ionicons (`@expo/vector-icons`); tab Riwayat menjadi "Favorit & Riwayat".
-2. **Riwayat pencarian** - maksimal 10 kota terakhir, disimpan di AsyncStorage; mengetuk riwayat menjalankan pencarian kota itu di Beranda.
-3. **Hapus cache per kota** - tombol Hapus di daftar "Tersimpan di perangkat" dengan dialog konfirmasi (Alert di HP, `window.confirm` di web).
-4. **Tema Terang / Gelap / Ikuti Sistem** - dipilih di Pengaturan, tersimpan, dan berlaku di semua layar.
+1. **Ikon tab bar dan label navigasi** — setiap tab menggunakan ikon Ionicons dari pustaka `@expo/vector-icons`. Label tab Riwayat diperbarui menjadi **Favorit & Riwayat**.
+2. **Riwayat pencarian** — menyimpan maksimal 10 kota terakhir menggunakan AsyncStorage. Pengguna dapat mengetuk salah satu kota untuk menjalankan pencarian kembali di halaman Beranda.
+3. **Penghapusan cache per kota** — menyediakan tombol **Hapus** pada daftar **Tersimpan di perangkat**, dilengkapi dialog konfirmasi menggunakan `Alert` pada perangkat mobile dan `window.confirm` pada browser web.
+4. **Tema Terang, Gelap, dan Ikuti Sistem** — pengguna dapat memilih tema melalui menu Pengaturan. Pilihan disimpan dan diterapkan pada seluruh layar aplikasi.
 
-Catatan platform: di HP cache memakai SQLite (`cacheRepository.ts`); di browser web dipakai `cacheRepository.web.ts` berbasis AsyncStorage dengan fungsi yang sama.
+### Catatan Platform
 
----
+Pada perangkat mobile, cache menggunakan SQLite melalui `cacheRepository.ts`. Pada browser web, cache menggunakan `cacheRepository.web.ts` berbasis AsyncStorage dengan fungsi yang sama.
 
 # Welcome to your Expo app 👋
 
